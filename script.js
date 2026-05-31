@@ -183,16 +183,6 @@ function formatTanggal(tanggal) {
     return new Date(tanggal + 'T00:00:00').toLocaleDateString('id-ID', options);
 }
 
-// Hapus data berdasarkan index
-function hapusData(index) {
-    if (confirm('Yakin ingin menghapus data ini?')) {
-        dataAbsensi.splice(index, 1);
-        saveData();
-        tampilkanTabel();
-        updateSaldoDisplay();
-        showNotification('Data berhasil dihapus', 'info');
-    }
-}
 
 // Hapus semua data
 function hapusSemua() {
