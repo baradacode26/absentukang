@@ -14,8 +14,32 @@
         </header>
 
         <main>
+            <!-- SALDO SECTION -->
+            <div class="saldo-section">
+                <h2>💰 Manajemen Saldo</h2>
+                <div class="saldo-container">
+                    <div class="saldo-box">
+                        <p class="saldo-label">Saldo Tersedia:</p>
+                        <p class="saldo-value" id="saldoTersedia">Rp 0</p>
+                    </div>
+                    <div class="saldo-box">
+                        <p class="saldo-label">Total Pengeluaran:</p>
+                        <p class="saldo-value" id="totalPengeluaran">Rp 0</p>
+                    </div>
+                    <div class="saldo-box highlight">
+                        <p class="saldo-label">Sisa Saldo:</p>
+                        <p class="saldo-value" id="sisaSaldo">Rp 0</p>
+                    </div>
+                </div>
+
+                <div class="saldo-input-group">
+                    <input type="number" id="tambahSaldoInput" min="0" placeholder="Masukkan jumlah saldo (Rp)">
+                    <button class="btn-add-saldo" onclick="tambahSaldo()">+ Tambah Saldo</button>
+                </div>
+            </div>
+
             <div class="form-section">
-                <h2>Input Data Absensi</h2>
+                <h2>📝 Input Data Absensi</h2>
                 
                 <div class="form-group">
                     <label for="tanggal">Tanggal:</label>
@@ -33,17 +57,12 @@
                     </div>
                 </div>
 
-                <div class="form-group">
-                    <label for="saldoDibayar">Saldo yang Sudah Dibayar (Rp):</label>
-                    <input type="number" id="saldoDibayar" min="0" value="0" required>
-                </div>
-
-                <button class="btn-submit" onclick="tambahData()">Tambah Data</button>
-                <button class="btn-reset" onclick="resetForm()">Reset</button>
+                <button class="btn-submit" onclick="tambahData()">✓ Tambah Data</button>
+                <button class="btn-reset" onclick="resetForm()">↻ Reset</button>
             </div>
 
             <div class="summary-section">
-                <h2>Ringkasan Perhitungan</h2>
+                <h2>📊 Ringkasan Perhitungan</h2>
                 <div class="summary-grid">
                     <div class="summary-box">
                         <p class="label">Biaya Tukang:</p>
@@ -53,19 +72,15 @@
                         <p class="label">Biaya Kenek:</p>
                         <p class="value" id="biayaKenek">Rp 0</p>
                     </div>
-                    <div class="summary-box">
+                    <div class="summary-box highlight">
                         <p class="label">Total Biaya:</p>
                         <p class="value" id="totalBiaya">Rp 0</p>
-                    </div>
-                    <div class="summary-box highlight">
-                        <p class="label">Sisa Bayaran:</p>
-                        <p class="value" id="sisaBayaran">Rp 0</p>
                     </div>
                 </div>
             </div>
 
             <div class="data-section">
-                <h2>Riwayat Absensi</h2>
+                <h2>📋 Riwayat Absensi</h2>
                 <div class="table-responsive">
                     <table id="tabelAbsensi">
                         <thead>
