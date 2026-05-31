@@ -4,6 +4,7 @@ const HARGA_KENEK = 150000;
 
 // Data penyimpanan
 let dataAbsensi = [];
+let saldoTersedia = 0;
 
 // Inisialisasi saat halaman dimuat
 document.addEventListener('DOMContentLoaded', function() {
@@ -17,24 +18,20 @@ document.addEventListener('DOMContentLoaded', function() {
     // Update perhitungan ketika input berubah
     document.getElementById('jumlahTukang').addEventListener('input', updateSummary);
     document.getElementById('jumlahKenek').addEventListener('input', updateSummary);
-    document.getElementById('saldoDibayar').addEventListener('input', updateSummary);
 });
 
 // Update ringkasan perhitungan
 function updateSummary() {
     const jumlahTukang = parseInt(document.getElementById('jumlahTukang').value) || 0;
     const jumlahKenek = parseInt(document.getElementById('jumlahKenek').value) || 0;
-    const saldoDibayar = parseInt(document.getElementById('saldoDibayar').value) || 0;
     
     const biayaTukang = jumlahTukang * HARGA_TUKANG;
     const biayaKenek = jumlahKenek * HARGA_KENEK;
     const totalBiaya = biayaTukang + biayaKenek;
-    const sisaBayaran = totalBiaya - saldoDibayar;
     
     document.getElementById('biayaTukang').textContent = formatRupiah(biayaTukang);
     document.getElementById('biayaKenek').textContent = formatRupiah(biayaKenek);
     document.getElementById('totalBiaya').textContent = formatRupiah(totalBiaya);
-    document.getElementById('sisaBayaran').textContent = formatRupiah(sisaBayaran);
 }
 
 // Format angka ke Rupiah
@@ -47,12 +44,49 @@ function formatRupiah(angka) {
     }).format(angka);
 }
 
+// Tambah saldo
+function tambahSaldo() {
+    const inputElement = document.getElementById('tambahSaldoInput');
+    const jumlah = parseInt(inputElement.value) || 0;
+    
+    if (jumlah <= 0) {
+        alert('Mohon masukkan jumlah saldo yang valid');
+        return;
+    }
+    
+    saldoTersedia += jumlah;
+    saveData();
+    updateSaldoDisplay();
+    inputElement.value = '';
+    
+    showNotification('Saldo berhasil ditambahkan Rp ' + formatRupiah(jumlah).replace('Rp ', ''), 'success');
+}
+
+// Update tampilan saldo
+function updateSaldoDisplay() {
+    const totalPengeluaran = dataAbsensi.reduce((sum, item) => sum + item.totalBiaya, 0);
+    const sisaSaldo = saldoTersedia - totalPengeluaran;
+    
+    document.getElementById('saldoTersedia').textContent = formatRupiah(saldoTersedia);
+    document.getElementById('totalPengeluaran').textContent = formatRupiah(totalPengeluaran);
+    document.getElementById('sisaSaldo').textContent = formatRupiah(sisaSaldo);
+    
+    // Ubah warna sisa saldo berdasarkan kondisi
+    const sisaSaldoElement = document.getElementById('sisaSaldo');
+    if (sisaSaldo < 0) {
+        sisaSaldoElement.style.color = '#dc2626'; // Merah jika minus
+    } else if (sisaSaldo === 0) {
+        sisaSaldoElement.style.color = '#f59e0b'; // Orange jika pas
+    } else {
+        sisaSaldoElement.style.color = '#2563eb'; // Biru jika positif
+    }
+}
+
 // Tambah data absensi
 function tambahData() {
     const tanggal = document.getElementById('tanggal').value;
     const jumlahTukang = parseInt(document.getElementById('jumlahTukang').value) || 0;
     const jumlahKenek = parseInt(document.getElementById('jumlahKenek').value) || 0;
-    const saldoDibayar = parseInt(document.getElementById('saldoDibayar').value) || 0;
     
     // Validasi input
     if (!tanggal) {
@@ -69,6 +103,13 @@ function tambahData() {
     const biayaKenek = jumlahKenek * HARGA_KENEK;
     const totalBiaya = biayaTukang + biayaKenek;
     
+    // Cek saldo cukup
+    const totalPengeluaranSekarang = dataAbsensi.reduce((sum, item) => sum + item.totalBiaya, 0);
+    if (saldoTersedia < totalPengeluaranSekarang + totalBiaya) {
+        alert('Saldo tidak cukup!\nSaldo tersedia: ' + formatRupiah(saldoTersedia) + '\nKebutuhan: ' + formatRupiah(totalPengeluaranSekarang + totalBiaya));
+        return;
+    }
+    
     // Cek apakah tanggal sudah ada
     const indexExist = dataAbsensi.findIndex(item => item.tanggal === tanggal);
     
@@ -80,8 +121,7 @@ function tambahData() {
                 jumlahKenek,
                 biayaTukang,
                 biayaKenek,
-                totalBiaya,
-                saldoDibayar
+                totalBiaya
             };
         } else {
             return;
@@ -93,8 +133,7 @@ function tambahData() {
             jumlahKenek,
             biayaTukang,
             biayaKenek,
-            totalBiaya,
-            saldoDibayar
+            totalBiaya
         });
     }
     
@@ -104,14 +143,13 @@ function tambahData() {
     // Simpan ke localStorage
     saveData();
     
-    // Tampilkan tabel
+    // Update tampilan
     tampilkanTabel();
-    
-    // Reset form
+    updateSaldoDisplay();
     resetForm();
     
     // Tampilkan notifikasi
-    showNotification('Data berhasil ditambahkan', 'success');
+    showNotification('Data berhasil ditambahkan! Sisa saldo: ' + formatRupiah(saldoTersedia - dataAbsensi.reduce((sum, item) => sum + item.totalBiaya, 0)), 'success');
 }
 
 // Tampilkan tabel absensi
@@ -154,7 +192,7 @@ function hapusData(index) {
         dataAbsensi.splice(index, 1);
         saveData();
         tampilkanTabel();
-        updateSummary();
+        updateSaldoDisplay();
         showNotification('Data berhasil dihapus', 'info');
     }
 }
@@ -165,7 +203,7 @@ function hapusSemua() {
         dataAbsensi = [];
         saveData();
         tampilkanTabel();
-        updateSummary();
+        updateSaldoDisplay();
         resetForm();
         showNotification('Semua data berhasil dihapus', 'warning');
     }
@@ -177,7 +215,6 @@ function resetForm() {
     document.getElementById('tanggal').value = today;
     document.getElementById('jumlahTukang').value = 0;
     document.getElementById('jumlahKenek').value = 0;
-    document.getElementById('saldoDibayar').value = 0;
     updateSummary();
 }
 
@@ -189,7 +226,8 @@ function exportCSV() {
     }
     
     let csv = 'Sistem Absensi Tukang & Kenek\n';
-    csv += 'Tanggal Export,' + new Date().toLocaleString('id-ID') + '\n\n';
+    csv += 'Tanggal Export,' + new Date().toLocaleString('id-ID') + '\n';
+    csv += 'Saldo Tersedia,' + saldoTersedia + '\n\n';
     csv += 'No,Tanggal,Tukang,Kenek,Biaya Tukang,Biaya Kenek,Total\n';
     
     dataAbsensi.forEach((item, index) => {
@@ -200,8 +238,10 @@ function exportCSV() {
     const totalTukang = dataAbsensi.reduce((sum, item) => sum + item.biayaTukang, 0);
     const totalKenek = dataAbsensi.reduce((sum, item) => sum + item.biayaKenek, 0);
     const grandTotal = dataAbsensi.reduce((sum, item) => sum + item.totalBiaya, 0);
+    const sisaSaldo = saldoTersedia - grandTotal;
     
     csv += '\n,Total:,,,' + totalTukang + ',' + totalKenek + ',' + grandTotal + '\n';
+    csv += '\n,Sisa Saldo:' + sisaSaldo + '\n';
     
     // Download
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -222,15 +262,24 @@ function exportCSV() {
 // Simpan data ke localStorage
 function saveData() {
     localStorage.setItem('dataAbsensi', JSON.stringify(dataAbsensi));
+    localStorage.setItem('saldoTersedia', saldoTersedia);
 }
 
 // Load data dari localStorage
 function loadData() {
     const saved = localStorage.getItem('dataAbsensi');
+    const saldo = localStorage.getItem('saldoTersedia');
+    
     if (saved) {
         dataAbsensi = JSON.parse(saved);
         tampilkanTabel();
     }
+    
+    if (saldo) {
+        saldoTersedia = parseInt(saldo);
+    }
+    
+    updateSaldoDisplay();
 }
 
 // Tampilkan notifikasi
@@ -249,6 +298,7 @@ function showNotification(message, type) {
         z-index: 1000;
         animation: slideIn 0.3s ease-out;
         font-weight: 600;
+        max-width: 400px;
     `;
     notification.textContent = message;
     
