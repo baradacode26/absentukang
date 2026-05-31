@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem Absensi Tukang & Kenek</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📋 Sistem Absensi Harian</h1>
+            <p>Tukang & Kenek</p>
+        </header>
+
+        <main>
+            <div class="form-section">
+                <h2>Input Data Absensi</h2>
+                
+                <div class="form-group">
+                    <label for="tanggal">Tanggal:</label>
+                    <input type="date" id="tanggal" required>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="jumlahTukang">Jumlah Tukang:</label>
+                        <input type="number" id="jumlahTukang" min="0" value="0" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="jumlahKenek">Jumlah Kenek:</label>
+                        <input type="number" id="jumlahKenek" min="0" value="0" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="saldoDibayar">Saldo yang Sudah Dibayar (Rp):</label>
+                    <input type="number" id="saldoDibayar" min="0" value="0" required>
+                </div>
+
+                <button class="btn-submit" onclick="tambahData()">Tambah Data</button>
+                <button class="btn-reset" onclick="resetForm()">Reset</button>
+            </div>
+
+            <div class="summary-section">
+                <h2>Ringkasan Perhitungan</h2>
+                <div class="summary-grid">
+                    <div class="summary-box">
+                        <p class="label">Biaya Tukang:</p>
+                        <p class="value" id="biayaTukang">Rp 0</p>
+                    </div>
+                    <div class="summary-box">
+                        <p class="label">Biaya Kenek:</p>
+                        <p class="value" id="biayaKenek">Rp 0</p>
+                    </div>
+                    <div class="summary-box">
+                        <p class="label">Total Biaya:</p>
+                        <p class="value" id="totalBiaya">Rp 0</p>
+                    </div>
+                    <div class="summary-box highlight">
+                        <p class="label">Sisa Bayaran:</p>
+                        <p class="value" id="sisaBayaran">Rp 0</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="data-section">
+                <h2>Riwayat Absensi</h2>
+                <div class="table-responsive">
+                    <table id="tabelAbsensi">
+                        <thead>
+                            <tr>
+                                <th>No</th>
+                                <th>Tanggal</th>
+                                <th>Tukang</th>
+                                <th>Kenek</th>
+                                <th>Biaya Tukang</th>
+                                <th>Biaya Kenek</th>
+                                <th>Total</th>
+                                <th>Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="isiTabel">
+                        </tbody>
+                    </table>
+                </div>
+                <p id="pesanKosong" class="pesan-kosong">Belum ada data absensi</p>
+            </div>
+
+            <div class="export-section">
+                <button class="btn-export" onclick="exportCSV()">📥 Export ke CSV</button>
+                <button class="btn-print" onclick="window.print()">🖨️ Print</button>
+                <button class="btn-clear" onclick="hapusSemua()">🗑️ Hapus Semua</button>
+            </div>
+        </main>
+
+        <footer>
+            <p>© 2026 Sistem Absensi Tukang & Kenek | Developed with ❤️</p>
+        </footer>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
