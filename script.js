@@ -2,23 +2,31 @@
 const HARGA_TUKANG = 220000;
 const HARGA_KENEK = 150000;
 
-// GitHub API Configuration
-const GITHUB_TOKEN = 'ghp_YOUR_TOKEN_HERE'; // Akan diisi user
+// GitHub Raw Content URL (Public Access - Tidak perlu Token)
 const REPO_OWNER = 'ahmaddzulkifli86-ai';
 const REPO_NAME = 'absentukang';
+const BRANCH = 'main';
+const RAW_URL = `https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/${BRANCH}`;
+const API_URL = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents`;
+
 const DATA_FILE = 'data.json';
 const SALDO_FILE = 'saldo.json';
+const CONFIG_FILE = 'config.json';
 
 // Data penyimpanan
 let dataAbsensi = [];
 let saldoTersedia = 0;
 let lastSyncTime = null;
+let githubToken = null;
 
 // Inisialisasi saat halaman dimuat
 document.addEventListener('DOMContentLoaded', function() {
     // Set tanggal input ke hari ini
     const today = new Date().toISOString().split('T')[0];
     document.getElementById('tanggal').value = today;
+    
+    // Setup token sekali saja di perangkat pertama
+    setupGitHubToken();
     
     // Load data dari cloud
     loadDataFromCloud();
@@ -27,38 +35,69 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('jumlahTukang').addEventListener('input', updateSummary);
     document.getElementById('jumlahKenek').addEventListener('input', updateSummary);
     
-    // Auto sync setiap 10 detik
-    setInterval(syncDataFromCloud, 10000);
+    // Auto sync setiap 5 detik
+    setInterval(syncDataFromCloud, 5000);
 });
 
-// Inisialisasi GitHub Token
-function initGitHubToken() {
-    const token = localStorage.getItem('githubToken');
-    if (!token) {
-        const userToken = prompt('Masukkan GitHub Personal Access Token Anda:\n\nBuat token di: https://github.com/settings/tokens\n- Pilih scopes: repo (full control of private repositories)');
-        if (userToken) {
-            localStorage.setItem('githubToken', userToken);
-            return userToken;
-        }
+// Setup GitHub Token - Hanya di Perangkat Pertama
+function setupGitHubToken() {
+    // Cek apakah token sudah ada di localStorage
+    const storedToken = localStorage.getItem('githubToken');
+    
+    if (storedToken) {
+        githubToken = storedToken;
+        console.log('✓ Token sudah tersedia, menggunakan token yang ada');
+        return;
     }
-    return token;
+    
+    // Cek di sessionStorage (untuk user yang baru pertama kali)
+    const sessionToken = sessionStorage.getItem('githubToken');
+    if (sessionToken) {
+        githubToken = sessionToken;
+        localStorage.setItem('githubToken', sessionToken);
+        console.log('✓ Token dari session, disimpan ke localStorage');
+        return;
+    }
+    
+    // Minta token hanya jika belum ada
+    const userToken = prompt(
+        'SETUP APLIKASI (Hanya sekali)\n\n' +
+        'Masukkan GitHub Personal Access Token:\n\n' +
+        '📖 Cara membuat token:\n' +
+        '1. Buka: https://github.com/settings/tokens\n' +
+        '2. Klik "Generate new token (classic)"\n' +
+        '3. Beri nama: absentukang-app\n' +
+        '4. Pilih scope: repo (full control)\n' +
+        '5. Generate & copy token\n\n' +
+        'Catatan: Token hanya perlu diinput sekali. Perangkat lain akan otomatis terhubung.'
+    );
+    
+    if (userToken && userToken.trim().length > 0) {
+        githubToken = userToken.trim();
+        localStorage.setItem('githubToken', githubToken);
+        sessionStorage.setItem('githubToken', githubToken);
+        showNotification('Token tersimpan! Aplikasi siap digunakan.', 'success');
+    } else {
+        showNotification('Token tidak diisi. Aplikasi bekerja dengan mode lokal.', 'warning');
+    }
 }
 
 // Load data dari Cloud (GitHub)
 async function loadDataFromCloud() {
     try {
-        const token = initGitHubToken();
-        if (!token) {
-            showNotification('Mohon setup GitHub token terlebih dahulu', 'warning');
+        if (!githubToken) {
+            console.log('⚠️ Token belum ada, loading dari lokal');
             loadDataFromLocal();
             return;
         }
         
+        console.log('📥 Loading dari cloud...');
+        
         // Load absensi data
         const absensiResponse = await fetch(
-            `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${DATA_FILE}`,
+            `${API_URL}/${DATA_FILE}`,
             {
-                headers: { 'Authorization': `token ${token}` }
+                headers: { 'Authorization': `token ${githubToken}` }
             }
         );
         
@@ -67,13 +106,17 @@ async function loadDataFromCloud() {
             const decodedContent = atob(absensiData.content);
             const parsedData = JSON.parse(decodedContent);
             dataAbsensi = parsedData.data || [];
+            console.log('✓ Data absensi berhasil dimuat:', dataAbsensi.length, 'baris');
+        } else {
+            console.log('⚠️ File data.json belum ada di cloud, membuat baru...');
+            dataAbsensi = [];
         }
         
         // Load saldo data
         const saldoResponse = await fetch(
-            `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${SALDO_FILE}`,
+            `${API_URL}/${SALDO_FILE}`,
             {
-                headers: { 'Authorization': `token ${token}` }
+                headers: { 'Authorization': `token ${githubToken}` }
             }
         );
         
@@ -82,13 +125,17 @@ async function loadDataFromCloud() {
             const decodedContent = atob(saldoData.content);
             const parsedData = JSON.parse(decodedContent);
             saldoTersedia = parsedData.saldo || 0;
+            console.log('✓ Data saldo berhasil dimuat:', formatRupiah(saldoTersedia));
+        } else {
+            console.log('⚠️ File saldo.json belum ada di cloud, membuat baru...');
+            saldoTersedia = 0;
         }
         
         tampilkanTabel();
         updateSaldoDisplay();
         updateSyncStatus();
     } catch (error) {
-        console.log('Cloud sync error:', error);
+        console.error('❌ Error loading cloud:', error.message);
         loadDataFromLocal();
     }
 }
@@ -96,13 +143,13 @@ async function loadDataFromCloud() {
 // Sync data dari cloud
 async function syncDataFromCloud() {
     try {
-        const token = localStorage.getItem('githubToken');
-        if (!token) return;
+        if (!githubToken) return;
         
+        // Cek data absensi di cloud
         const absensiResponse = await fetch(
-            `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${DATA_FILE}`,
+            `${API_URL}/${DATA_FILE}`,
             {
-                headers: { 'Authorization': `token ${token}` }
+                headers: { 'Authorization': `token ${githubToken}` }
             }
         );
         
@@ -114,15 +161,17 @@ async function syncDataFromCloud() {
             
             // Cek jika ada perubahan di cloud
             if (JSON.stringify(cloudData) !== JSON.stringify(dataAbsensi)) {
+                console.log('🔄 Update data terdeteksi, mengupdate tampilan...');
                 dataAbsensi = cloudData;
                 tampilkanTabel();
             }
         }
         
+        // Cek data saldo di cloud
         const saldoResponse = await fetch(
-            `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${SALDO_FILE}`,
+            `${API_URL}/${SALDO_FILE}`,
             {
-                headers: { 'Authorization': `token ${token}` }
+                headers: { 'Authorization': `token ${githubToken}` }
             }
         );
         
@@ -133,6 +182,7 @@ async function syncDataFromCloud() {
             const cloudSaldo = parsedData.saldo || 0;
             
             if (cloudSaldo !== saldoTersedia) {
+                console.log('🔄 Update saldo terdeteksi');
                 saldoTersedia = cloudSaldo;
                 updateSaldoDisplay();
             }
@@ -140,116 +190,98 @@ async function syncDataFromCloud() {
         
         updateSyncStatus();
     } catch (error) {
-        console.log('Sync error:', error);
+        console.log('⚠️ Sync error (akan retry):', error.message);
     }
 }
 
 // Simpan data ke Cloud (GitHub)
 async function saveDataToCloud() {
+    if (!githubToken) {
+        console.log('⚠️ Token tidak ada, hanya simpan lokal');
+        saveDataToLocal();
+        return;
+    }
+    
     try {
-        const token = localStorage.getItem('githubToken');
-        if (!token) {
-            showNotification('GitHub token tidak ditemukan', 'warning');
-            saveDataToLocal();
-            return;
-        }
+        console.log('📤 Menyimpan ke cloud...');
         
         // Save absensi data
-        const absensiContent = JSON.stringify({
+        await saveFileToGitHub(DATA_FILE, {
             data: dataAbsensi,
             lastUpdate: new Date().toISOString()
-        }, null, 2);
-        
-        // Get SHA untuk update
-        const checkResponse = await fetch(
-            `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${DATA_FILE}`,
-            {
-                headers: { 'Authorization': `token ${token}` }
-            }
-        );
-        
-        let sha = null;
-        if (checkResponse.ok) {
-            const fileData = await checkResponse.json();
-            sha = fileData.sha;
-        }
-        
-        // Upload absensi
-        await fetch(
-            `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${DATA_FILE}`,
-            {
-                method: 'PUT',
-                headers: {
-                    'Authorization': `token ${token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    message: 'Update absensi data',
-                    content: btoa(absensiContent),
-                    sha: sha
-                })
-            }
-        );
+        });
         
         // Save saldo data
-        const saldoContent = JSON.stringify({
+        await saveFileToGitHub(SALDO_FILE, {
             saldo: saldoTersedia,
             lastUpdate: new Date().toISOString()
-        }, null, 2);
-        
-        const saldoCheckResponse = await fetch(
-            `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${SALDO_FILE}`,
-            {
-                headers: { 'Authorization': `token ${token}` }
-            }
-        );
-        
-        let saldoSha = null;
-        if (saldoCheckResponse.ok) {
-            const saldoData = await saldoCheckResponse.json();
-            saldoSha = saldoData.sha;
-        }
-        
-        // Upload saldo
-        await fetch(
-            `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${SALDO_FILE}`,
-            {
-                method: 'PUT',
-                headers: {
-                    'Authorization': `token ${token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    message: 'Update saldo data',
-                    content: btoa(saldoContent),
-                    sha: saldoSha
-                })
-            }
-        );
+        });
         
         updateSyncStatus();
-        showNotification('Data tersimpan ke cloud', 'success');
+        console.log('✓ Data berhasil disimpan ke cloud');
     } catch (error) {
-        console.error('Cloud save error:', error);
-        showNotification('Gagal menyimpan ke cloud, disimpan lokal', 'warning');
+        console.error('❌ Error saving to cloud:', error.message);
         saveDataToLocal();
+    }
+}
+
+// Helper: Save file ke GitHub
+async function saveFileToGitHub(filename, jsonContent) {
+    const content = JSON.stringify(jsonContent, null, 2);
+    
+    // Get SHA untuk update
+    const checkResponse = await fetch(
+        `${API_URL}/${filename}`,
+        {
+            headers: { 'Authorization': `token ${githubToken}` }
+        }
+    );
+    
+    let sha = null;
+    if (checkResponse.ok) {
+        const fileData = await checkResponse.json();
+        sha = fileData.sha;
+    }
+    
+    // Upload file
+    const response = await fetch(
+        `${API_URL}/${filename}`,
+        {
+            method: 'PUT',
+            headers: {
+                'Authorization': `token ${githubToken}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                message: `Update ${filename}`,
+                content: btoa(content),
+                sha: sha
+            })
+        }
+    );
+    
+    if (!response.ok) {
+        throw new Error(`Failed to save ${filename}: ${response.status}`);
     }
 }
 
 // Load data dari Local (Backup)
 function loadDataFromLocal() {
+    console.log('📂 Loading dari lokal...');
     const saved = localStorage.getItem('dataAbsensi');
     const saldo = localStorage.getItem('saldoTersedia');
     
     if (saved) {
         dataAbsensi = JSON.parse(saved);
-        tampilkanTabel();
+        console.log('✓ Data absensi lokal dimuat');
     }
     
     if (saldo) {
         saldoTersedia = parseInt(saldo);
+        console.log('✓ Data saldo lokal dimuat');
     }
     
+    tampilkanTabel();
     updateSaldoDisplay();
 }
 
@@ -257,6 +289,7 @@ function loadDataFromLocal() {
 function saveDataToLocal() {
     localStorage.setItem('dataAbsensi', JSON.stringify(dataAbsensi));
     localStorage.setItem('saldoTersedia', saldoTersedia);
+    console.log('✓ Data disimpan lokal');
 }
 
 // Update tampilan sync status
@@ -319,7 +352,6 @@ function updateSaldoDisplay() {
     document.getElementById('totalPengeluaran').textContent = formatRupiah(totalPengeluaran);
     document.getElementById('sisaSaldo').textContent = formatRupiah(sisaSaldo);
     
-    // Ubah warna sisa saldo berdasarkan kondisi
     const sisaSaldoElement = document.getElementById('sisaSaldo');
     if (sisaSaldo < 0) {
         sisaSaldoElement.style.color = '#dc2626';
@@ -350,14 +382,12 @@ function tambahData() {
     const biayaKenek = jumlahKenek * HARGA_KENEK;
     const totalBiaya = biayaTukang + biayaKenek;
     
-    // Cek saldo cukup
     const totalPengeluaranSekarang = dataAbsensi.reduce((sum, item) => sum + item.totalBiaya, 0);
     if (saldoTersedia < totalPengeluaranSekarang + totalBiaya) {
         alert('Saldo tidak cukup!\nSaldo tersedia: ' + formatRupiah(saldoTersedia) + '\nKebutuhan: ' + formatRupiah(totalPengeluaranSekarang + totalBiaya));
         return;
     }
     
-    // Cek apakah tanggal sudah ada
     const indexExist = dataAbsensi.findIndex(item => item.tanggal === tanggal);
     
     if (indexExist !== -1) {
