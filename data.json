@@ -39,7 +39,15 @@
       "biayaTukang": 440000,
       "biayaKenek": 600000,
       "totalBiaya": 1040000
+    },
+    {
+      "tanggal": "2026-06-06",
+      "jumlahTukang": 2,
+      "jumlahKenek": 4,
+      "biayaTukang": 440000,
+      "biayaKenek": 600000,
+      "totalBiaya": 1040000
     }
   ],
-  "lastUpdate": "2026-06-05T11:23:02.852Z"
+  "lastUpdate": "2026-06-06T07:56:34.217Z"
 }
