@@ -113,6 +113,14 @@
       "totalBiaya": 890000
     },
     {
+      "tanggal": "2026-06-16",
+      "jumlahTukang": 3,
+      "jumlahKenek": 3,
+      "biayaTukang": 660000,
+      "biayaKenek": 450000,
+      "totalBiaya": 1110000
+    },
+    {
       "tanggal": "2026-06-17",
       "jumlahTukang": 4,
       "jumlahKenek": 3,
@@ -129,5 +137,5 @@
       "totalBiaya": 1480000
     }
   ],
-  "lastUpdate": "2026-06-18T10:20:04.982Z"
+  "lastUpdate": "2026-06-18T10:20:29.093Z"
 }
